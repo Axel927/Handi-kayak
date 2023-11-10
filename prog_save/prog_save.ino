@@ -12,6 +12,7 @@
 #include "SDMMCBlockDevice.h"
 #include "FATFileSystem.h"
 #include <Wire.h>
+#include "attitude_estimator.h"
 
 // Basic demo for accelerometer readings from Adafruit MPU6050
 
@@ -27,9 +28,12 @@ unsigned long t = 0;
 SDMMCBlockDevice block_device;
 mbed::FATFileSystem fs("fs");
 FILE *myFile;
+stateestimation::AttitudeEstimator Est;
 
 void setup() {
   //Serial.begin(115200);
+
+  
 
   //Serial.println("Mounting SDCARD...");
   int err =  fs.mount(&block_device);
@@ -121,13 +125,19 @@ void loop() {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
+  Est.update(millis()-t, g.gyro.x, g.gyro.y, g.gyro.z, a.acceleration.x, a.acceleration.y, a.acceleration.z, 0.0, 0.0, 0.0);
+  t = millis();
+  
   char myFileName[] = "fs/test.txt";
 
   myFile = fopen(myFileName, "a");  // "a" for append or make it if file not there
   
   //  fprintf(myFile,"test \r\n");
     fprintf(myFile, "%d\t%f\t%f\t%f\t%f\t%f\t%f\n", t, a.acceleration.x,a.acceleration.y,a.acceleration.z,g.gyro.x,g.gyro.y,g.gyro.z);
-  t = millis();
+  //Serial.print(Est.getAttitude(double q[]));
+  Serial.print(Est.eulerYaw()); Serial.print(" ");
+  Serial.print(Est.eulerPitch());Serial.print(" ");
+  Serial.println(Est.eulerRoll());
   //Serial.println(t);
   fclose(myFile);
   delay(100);
