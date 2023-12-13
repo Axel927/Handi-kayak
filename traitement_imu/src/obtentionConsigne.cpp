@@ -5,11 +5,15 @@
 using namespace std;
 
 float obtentionConsigne(float angle, float position,float seuil_angle_haut,float seuil_distance_haut,float seuil_distance_bas);
+bool haut =true;
 
 int main(void)
 {
-    float test = obtentionConsigne(0.08f,1,5,20,10);
-    cout<<test<<endl;
+    for (int i ;i< 18; i++){
+        float test = obtentionConsigne(i * 0.01f,1,5,20,10);
+        cout<<test<<endl;
+    }
+    
     return 0;
 }
 
@@ -31,8 +35,6 @@ float obtentionConsigne(float angle, float position,float seuil_angle_haut,float
 
     float cote_opp; //Longueur du coté oppose forme par le kayak
 
-    bool centre; //Vrai si le kayak pointe vise un point entre le seuil_distance_haut et seuil_distance_bas
-    
     if(abs_position < 0.25f){ //Si on est environ au centre
         if( (signe_angle * signe_position < 0 && abs_angle !=0) || abs_angle > seuil_angle_haut){ //Si on pointe vers l'exterieur du couloir ou qu'on tourne trop fort
             bip = signe_angle * min( one , abs_angle / cinq_degree_rad ); //Calcule l'intensité du bip
@@ -41,25 +43,30 @@ float obtentionConsigne(float angle, float position,float seuil_angle_haut,float
     else if( abs_angle != 0 ){ //Si on ne va pas tout droit
 
         cote_opp = tan( M_PI / 2 - abs_angle ) * abs_position; //Calcule de la longueur du coté opposé
-        centre = cote_opp > seuil_distance_bas && cote_opp < seuil_distance_haut; //Détermine si on vise un point entre le seuil_distance_haut et seuil_distance_bas
-	cout<<"cote_opp : "<< cote_opp<<endl;
-	cout<<"centre : "<< centre<<endl;
-        if(signe_angle * signe_position < 0 && !abs_angle == 0){ //Si le kayak pointe vers l'exterieur du couloir
+        cout<<""<<endl;
+        cout<<"cote_opp : "<< cote_opp<<endl;
+	    cout<<"haut : "<< haut<<endl;
+
+        if(!haut){
+            haut = cote_opp > (seuil_distance_haut + seuil_distance_bas) / 2;
+            bip = signe_position * max( -one, min( one, cote_opp / (( seuil_distance_haut + seuil_distance_bas) / 2) - 1));
+        }
+        
+        else if(signe_angle * signe_position < 0 && !abs_angle == 0){ //Si le kayak pointe vers l'exterieur du couloir
 
             bip = signe_position;
         }
     
-        else if(!centre){ //Si le kayak ne vise pas entre les deux seuille
+        else if(cote_opp > seuil_distance_haut){ //Si le kayak ne vise pas entre les deux seuille
 
             bip = -signe_position*max(-one, min( one, cote_opp / seuil_distance_haut - 1)); //
         
         }
-        else{ //Sinon
-            if(cote_opp < seuil_distance_bas || cote_opp > seuil_distance_haut){ //Si le kayak arrete de viser entre les deux seuil
+        else if( cote_opp < seuil_distance_bas || !haut){ //Si le kayak arrete de viser entre les deux seuil
 
                 bip = signe_position * max( -one, min( one, cote_opp / (( seuil_distance_haut + seuil_distance_bas) / 2) - 1)); //Tourne afin d'arriver entre les deux seuil
-            
-            }
+                haut = false;
+                cout<<"Test"<<endl;
         }
     }
     return bip;
