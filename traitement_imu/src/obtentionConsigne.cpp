@@ -9,7 +9,7 @@ bool haut =true;
 
 int main(void)
 {
-    for (int i ;i< 18; i++){
+    for (int i = 0 ; i < 18 ; i ++){
         float test = obtentionConsigne(i * 0.01f,1,5,20,10);
         cout<<test<<endl;
     }

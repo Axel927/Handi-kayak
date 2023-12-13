@@ -37,3 +37,15 @@ CMakeFiles/
 Makefile
 CMakeCache.txt
 cmake_install.cmake
+
+# Arduino files
+debug.cfg
+debug_custom.json
+Esp32.svd
+
+# vscode files
+.vscode/
+
+# Apple files
+.DS_Store
+
