@@ -30,3 +30,15 @@
 *.exe
 *.out
 *.app
+
+# Generated files
+build/
+install/
+log/
+__pycache__/
+src/imu_package/resource/
+src/imu_package/test/
+
+# Hidden files
+.*
+!.gitignore
