@@ -4,9 +4,7 @@ from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Quaternion
-from geometry_msgs.msg import PoseWithCovarianceStamped
-#from geometry_msgs.msg import Pose
-import melopero_lsm9ds1 as mp
+from icm20948 import ICM20948
 import numpy as np
 from ahrs.filters import Madgwick
 
@@ -19,18 +17,12 @@ class MyNode(Node):
 		super().__init__('Imu_readings')
 		self.frequency = 0.1 													#Period between callbacks
 		self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)
-		self.publisher2_ = self.create_publisher(PoseWithCovarianceStamped, 'set_pose', 10)
-		self.subscription_ = self.create_subscription(Odometry, "odometry/filtered",self.callback, 10)
 		self.timer_ = self.create_timer(self.frequency, self.timer_callbacks)
 		self.get_logger().info('Node initialised')
-		self.sensor = mp.LSM9DS1()												#Initialise the IMU LSM9DS1
-		self.sensor.use_i2c()
-		self.sensor.set_gyro_odr(mp.LSM9DS1.ODR_119Hz)							#Set the gyro ,acc and mag adresses
-		self.sensor.set_acc_odr(mp.LSM9DS1.ODR_119Hz)
-		self.sensor.set_mag_odr(mp.LSM9DS1.MAG_ODR_20Hz)
+		self.sensor = ICM20948()												#Initialise the IMU LSM9DS1
 		self.madgwick = Madgwick()												#Initialise a Madgwick filter
 		self.madgwick.dt = self.frequency										#Define the madgwick filters frequency
-		self.Q = np.array([1.0,0.0,0.0,0.0])
+		self.Q = np.array([1.0, 0.0, 0.0, 0.0])
 
 	"""
 	ned_to_enu takes a list in the NED (North, East, Down) format and switch it to the ENU (East, North, Up) format
@@ -38,9 +30,9 @@ class MyNode(Node):
 	@return enu a list of coordinates in the ENU format
 	"""
 	def ned_to_enu(self,ned):
-		enu=[0,0,0]
-		enu[0],enu[1],enu[2]=ned[1],ned[0],-ned[2]
-		return(enu)
+		enu = [0, 0, 0]
+		enu[0], enu[1], enu[2] = ned[1], ned[0], -ned[2]
+		return enu
 
 	"""
 	imu_treatement gets the data from the IMU, traet it and returns it in the IMU format
@@ -54,10 +46,17 @@ class MyNode(Node):
 		vec3_gyro  = Vector3()
 
 		#Get the IMU data
-		gyro_measurement = self.ned_to_enu( self.sensor.get_gyro() )
-		acc_measurement  = self.ned_to_enu( self.sensor.get_acc() )
-		mag_measurement  = self.ned_to_enu( self.sensor.get_mag() )
-		acc_measurement  = [ acc_measurement[0] * 9.81, acc_measurement[1] * 9.81, acc_measurement[2] * 9.81]
+		acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data() 
+
+		acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] )
+		gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )
+		mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() )
+
+		acc_measurement  = [ acc_measurement[0] * 9.81, acc_measurement[1] * 9.81, acc_measurement[2] * 9.81 ]
+
+		#Get time
+
+		time_stamp = self.get_clock().now().to_msg()
 
 		#Assign the imu data to vect3
 		vec3_acc  = self.assign_2_vect(acc_measurement)
@@ -75,6 +74,7 @@ class MyNode(Node):
 		imu.angular_velocity_covariance = [ 0.01569848, 0., 0., 0., 0.13585773, 0., 0., 0., 0.07959719]
 
 		imu.orientation = self.assign_2_quat()
+		imu.header.stamp = time_stamp
 
 		return (imu)
 
@@ -92,6 +92,7 @@ class MyNode(Node):
 		vect3.z = array3[2]
 
 		return vect3
+
 	"""
 	assign_2_quat assign Q to a Quaternion
 	@return quat an object of type Quaternion
@@ -111,21 +112,8 @@ class MyNode(Node):
 	timer_callbacks takes the imu data and publishes it on the node Imu_readings
 	"""
 	def timer_callbacks(self):
-		Imu_readings = Imu()
-		pos = PoseWithCovarianceStamped()
-		pos.pose.pose.position.x = 1.0
 
-		Imu_readings = self.imu_treatement()
-
-		self.publisher_.publish(Imu_readings)
-		self.publisher2_.publish(pos)
-		#self.get_logger().info('Published Imu readings')
-	"""
-	callback sends the messages received from odometry/filtered
-	"""
-	def callback(self,msg):
-		print(msg)
-		self.get_logger.info('Published message: "%s"' % msg.data)
+		self.publisher_.publish(self.imu_treatement())
 
 def main(args=None):
 	rclpy.init(args=args)
