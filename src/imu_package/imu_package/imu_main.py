@@ -4,10 +4,11 @@ from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import PoseWithCovarianceStamped
+#from geometry_msgs.msg import Pose
 import melopero_lsm9ds1 as mp
 import numpy as np
 from ahrs.filters import Madgwick
-#from ahrs.common.orientation import acc2q
 
 class MyNode(Node):
 
@@ -18,6 +19,7 @@ class MyNode(Node):
 		super().__init__('Imu_readings')
 		self.frequency = 0.1 													#Period between callbacks
 		self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)
+		self.publisher2_ = self.create_publisher(PoseWithCovarianceStamped, 'set_pose', 10)
 		self.subscription_ = self.create_subscription(Odometry, "odometry/filtered",self.callback, 10)
 		self.timer_ = self.create_timer(self.frequency, self.timer_callbacks)
 		self.get_logger().info('Node initialised')
@@ -110,10 +112,13 @@ class MyNode(Node):
 	"""
 	def timer_callbacks(self):
 		Imu_readings = Imu()
+		pos = PoseWithCovarianceStamped()
+		pos.pose.pose.position.x = 1.0
 
 		Imu_readings = self.imu_treatement()
 
 		self.publisher_.publish(Imu_readings)
+		self.publisher2_.publish(pos)
 		#self.get_logger().info('Published Imu readings')
 	"""
 	callback sends the messages received from odometry/filtered
