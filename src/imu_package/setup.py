@@ -23,7 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-		'imu_main = imu_package.imu_main:main'
+		'imu_main = imu_package.imu_main:main',
+        'ekf_listener = imu_package.ekf_listener:main'
         ],
     },
 )

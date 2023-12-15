@@ -29,8 +29,13 @@ def generate_launch_description():
     imu = Node(
         package='imu_package', executable='imu_main',
         )
+    
+    ekf_listener = Node(
+        package = 'imu_package', executable = 'ekf_listener'
+    )
 
     return LaunchDescription([
         start_robot_localization_cmd,
-        imu
+        imu,
+        ekf_listener
     ])
