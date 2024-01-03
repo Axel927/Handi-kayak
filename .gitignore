@@ -37,7 +37,7 @@ install/
 log/
 __pycache__/
 # src/imu_package/resource/ removed as believed to be required despite bieng empty
-src/imu_package/test/
+src/*/test/
 
 # Hidden files
 .*
