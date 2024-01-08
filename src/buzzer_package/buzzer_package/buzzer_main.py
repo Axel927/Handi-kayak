@@ -33,7 +33,7 @@ class BuzzerNode(Node):
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(self.buzzer_pin, GPIO.OUT)
             GPIO.setwarnings(False)
-            self.buzzer = GPIO.PWM(self.buzzer_pin, 0)
+            self.buzzer = GPIO.PWM(self.buzzer_pin, 0.1)
 
         self.timer = self.create_timer(1, self.timer_callback)
         self.timer.cancel()

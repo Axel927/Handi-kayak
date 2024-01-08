@@ -48,12 +48,14 @@ class MyNode(Node):
 		#Get the IMU data
 		acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data() 
 
-		acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] )
-		gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )
-		mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() )
+		acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] ) #acc in g
+		gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )  #gyro in degree per second
+		mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() ) #mag in microtesla
 
-		acc_measurement  = [ acc_measurement[0] * 9.81, acc_measurement[1] * 9.81, acc_measurement[2] * 9.81 ]
-
+		acc_measurement  = [ acc_measurement[0] * 9.81, acc_measurement[1] * 9.81, acc_measurement[2] * 9.81 ] #acc from g to m/(s*s)
+		gyro_measurement = [ gyro_measurement[0]*np.pi/180, gyro_measurement[1]*np.pi/180, gyro_measurement[2]*np.pi/180 ] #gyro from dps to radian/second
+		mag_measurement = [ mag_measurement[0]*1E-6, mag_measurement[1]*1E-6, mag_measurement[2]*1E-6] #mag from microtesla to tesla
+		
 		#Get time
 
 		time_stamp = self.get_clock().now().to_msg()
@@ -68,10 +70,14 @@ class MyNode(Node):
 		#Assign the value to imu
 
 		imu.linear_acceleration = vec3_acc
-		imu.linear_acceleration_covariance = [ 0.01359075, 0.0, 0.0, 0.0, 0.00339754, 0.0, 0.0, 0.0, 0.0077804]
+		imu.linear_acceleration_covariance = [ 	5.548E-4, 0.0, 0.0,
+												0.0, 5.065E-4, 0.0, 
+												0.0, 0.0, 5.804E-4]
 
 		imu.angular_velocity = vec3_gyro
-		imu.angular_velocity_covariance = [ 0.01569848, 0., 0., 0., 0.13585773, 0., 0., 0., 0.07959719]
+		imu.angular_velocity_covariance = [ 4.5598E-6, 0., 0., 
+											0., 4.1822E-6, 0., 
+											0., 0., 4.4396E-6]
 
 		imu.orientation = self.assign_2_quat()
 		imu.header.stamp = time_stamp

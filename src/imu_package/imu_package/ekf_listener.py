@@ -4,7 +4,10 @@ from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Quaternion
+from std_msgs.msg import Float32
 import numpy as np
+from .submodules.kayak_function import KayakFunctions
+from tf_transformations import euler_from_quaternion
 
 class MyNode(Node):
 
@@ -14,10 +17,12 @@ class MyNode(Node):
 	def __init__(self):
 		super().__init__('ekf_listener')
 		self.frequency = 0.1 													#Period between callbacks
-		#self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)
+		self.publisher_ = self.create_publisher(Float32, 'buzzer_instruction', 10)
 		self.subscribtion_ = self.create_subscription(Odometry, 'odometry/filtered', self.callback, 10) 
-        #self.timer_ = self.create_timer(self.frequency, self.timer_callbacks)
+		self.timer_ = self.create_timer(self.frequency, self.timer_callbacks)
 		self.get_logger().info('Node initialised')
+		self.position = Vector3()
+		self.euler = Vector3()
 		
 
 	"""
@@ -89,30 +94,36 @@ class MyNode(Node):
 
 		return vect3
 
-	"""
-	assign_2_quat assign Q to a Quaternion
-	@return quat an object of type Quaternion
-	"""
-	def assign_2_quat(self) -> Quaternion:
+	def quat_2_euler(self, quat: Quaternion) -> Vector3:
+		euler = Vector3()
 
-		quat = Quaternion()
+		orientation_list = [quat.x, quat.y, quat.z, quat.w]
 
-		quat.x = self.Q[0]
-		quat.y = self.Q[1]
-		quat.z = self.Q[2]
-		quat.w = self.Q[3]
+		(roll, pitch, yaw) = euler_from_quaternion(orientation_list)
 
-		return quat
+		euler.x, euler.y, euler.z =roll, pitch, yaw 
+		
+		return euler
+
 
 	"""
 	timer_callbacks takes the imu data and publishes it on the node Imu_readings
 	"""
 	def timer_callbacks(self):
+		functions = KayakFunctions()
+		buzzer_command = Float32()
+		buzzer_command.data = functions.getOrder(self.euler.z, self.position.y,  5., 20., 10.)
+		self.get_logger().info(f"Received angle: {self.euler.z}")
 
-		self.publisher_.publish(self.imu_treatement())
+		self.publisher_.publish(buzzer_command)
 
 	def callback(self, msg):
-		print(msg.pose)
+		quaternion = Quaternion()
+
+		position = msg.pose.pose.position.y
+		quaternion = msg.pose.pose.orientation
+		#self.get_logger().info(f"Received quaternion: {quaternion}")
+		self.euler = self.quat_2_euler(quaternion)
 
 def main(args=None):
 	rclpy.init(args=args)
