@@ -2,16 +2,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32
 from time import sleep
-
-global IS_RPI
-try:
-    import RPi.GPIO as GPIO
-
-    IS_RPI = True
-
-except ModuleNotFoundError:
-    IS_RPI = False
-    print("Module RPi.GPIO not found. Computer is supposed not being a Raspberry Pi.")
+import RPi.GPIO as GPIO
 
 
 class BuzzerNode(Node):
@@ -28,13 +19,14 @@ class BuzzerNode(Node):
         self.buzzer_frequencies = [400, 10000]  # Frequency of the buzzer in Hz [turn left, turn right]
         self.current_buzzer = 0
 
-        if IS_RPI:
-            self.buzzer_pin = 4  # GPIO 4, pin 7
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(self.buzzer_pin, GPIO.OUT)
-            GPIO.setwarnings(False)
-            self.buzzer = GPIO.PWM(self.buzzer_pin, 0.1)
-
+        self.buzzer_pin = 4  # GPIO 4, pin 7
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(self.buzzer_pin, GPIO.OUT)
+        GPIO.setwarnings(False)
+        self.buzzer = GPIO.PWM(self.buzzer_pin, 0.1)
+        self.buzzer.start(50)
+        self.buzzer.ChangeDutyCycle(0)  # Shut the buzzer down
+            
         self.timer = self.create_timer(1, self.timer_callback)
         self.timer.cancel()
         self.subscription = self.create_subscription(Float32, 'buzzer_instruction', self.instruction_callback, 10)
@@ -42,7 +34,7 @@ class BuzzerNode(Node):
         self.get_logger().info("BuzzerNode initialization finished. Listening on topic 'buzzer_instruction'.")
         # To publish on a terminal: ros2 topic pub -1 /buzzer_instruction std_msgs/msg/Float32 \"{data: -0.4}\"
 
-    def buzz(self, frequency, duty_cycle=50.0, duration=0.1):
+    def buzz(self, frequency, duty_cycle=80.0, duration=0.2):
         """
         Activate the buzzer (the buzzer must be a passive buzzer)
         :param frequency: frequency of the buzzer in Hz
@@ -50,13 +42,11 @@ class BuzzerNode(Node):
         :param duration: duration of the buzz in seconds
         :return: None
         """
-        if IS_RPI:
-            self.buzzer.ChangeFrequency(frequency)
-            self.buzzer.ChangeDutyCycle(duty_cycle)
-            sleep(duration)
-            self.buzzer.ChangeDutyCycle(0)  # Shut the buzzer down
-        else:
-            self.get_logger().info("No buzz because the computer is not a Raspberry Pi")
+    
+        self.buzzer.ChangeFrequency(frequency)
+        self.buzzer.ChangeDutyCycle(duty_cycle)
+        sleep(duration)
+        self.buzzer.ChangeDutyCycle(0)  # Shut the buzzer down
 
     def timer_callback(self):
         """

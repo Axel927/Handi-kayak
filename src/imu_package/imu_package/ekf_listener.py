@@ -113,7 +113,7 @@ class MyNode(Node):
 		functions = KayakFunctions()
 		buzzer_command = Float32()
 		buzzer_command.data = functions.getOrder(self.euler.z, self.position.y,  5., 20., 10.)
-		self.get_logger().info(f"Received angle: {self.euler.z}")
+		#self.get_logger().info(f"Received angle: roll {self.euler.x},pitch {self.euler.y},yaw {self.euler.z}")
 
 		self.publisher_.publish(buzzer_command)
 
@@ -129,7 +129,6 @@ def main(args=None):
 	rclpy.init(args=args)
 	node = MyNode()
 	rclpy.spin(node)
-	sensor.use_I2C()
 	rclpy.shutdown()
 
 if __name__ == '__main__':

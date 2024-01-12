@@ -2,3 +2,4 @@ numpy==1.21.5
 icm20948==0.0.2
 ahrs==0.3.1
 transforms3D==0.4.1
+gps==3.19

@@ -111,6 +111,7 @@ class MyNode(Node):
 		quat.y = self.Q[1]
 		quat.z = self.Q[2]
 		quat.w = self.Q[3]
+		
 
 		return quat
 
