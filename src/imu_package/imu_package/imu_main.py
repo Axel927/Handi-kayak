@@ -68,6 +68,9 @@ class MyNode(Node):
 		self.Q = self.madgwick.updateMARG(self.Q, gyr = gyro_measurement,acc = acc_measurement,mag = mag_measurement)
 
 		#Assign the value to imu
+		#self.get_logger().info(f"Received acceleration: {vec3_acc}")
+		#self.get_logger().info(f"Received gyro: {vec3_gyro}")
+		#self.get_logger().info(f"Received mag: {mag_measurement}\n")
 
 		imu.linear_acceleration = vec3_acc
 		imu.linear_acceleration_covariance = [ 	5.548E-4, 0.0, 0.0,

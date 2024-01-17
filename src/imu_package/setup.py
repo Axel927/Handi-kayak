@@ -25,7 +25,9 @@ setup(
     entry_points={
         'console_scripts': [
 		'imu_main = imu_package.imu_main:main',
-        'ekf_listener = imu_package.ekf_listener:main'
+        'ekf_listener = imu_package.ekf_listener:main',
+        'position_zero = imu_package.position_zero:main',
+        'gps_listener = imu_package.gps_listener:main'
         ],
     },
 )

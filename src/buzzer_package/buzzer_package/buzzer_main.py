@@ -32,7 +32,7 @@ class BuzzerNode(Node):
         self.subscription = self.create_subscription(Float32, 'buzzer_instruction', self.instruction_callback, 10)
 
         self.get_logger().info("BuzzerNode initialization finished. Listening on topic 'buzzer_instruction'.")
-        # To publish on a terminal: ros2 topic pub -1 /buzzer_instruction std_msgs/msg/Float32 \"{data: -0.4}\"
+        # To publish on a terminal: ros2 topic pub -1 /buzzer_instruction std_msgs/msg/Float32 "{data: -0.4}"
 
     def buzz(self, frequency, duty_cycle=80.0, duration=0.2):
         """

@@ -7,6 +7,7 @@ from geometry_msgs.msg import Quaternion
 import gps
 import numpy as np
 import serial
+import adafruit_gps
 
 class MyNode(Node):
 
@@ -15,11 +16,18 @@ class MyNode(Node):
 	"""
 	def __init__(self):
 		super().__init__('Gps_readings')
-		self.frequency = 0.1 													#Period between callbacks
+		self.frequency = 1.0													#Period between callbacks
 		self.publisher_ = self.create_publisher(NavSatFix, 'Gps_readings', 10)
 		self.timer_ = self.create_timer(self.frequency, self.timer_callbacks)
 		self.get_logger().info('Node initialised')
-		#self.ser = serial.Serial('/dev/ttyAMA0',baudrate=9600,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE)
+		self.ser = serial.Serial('/dev/ttyS0',baudrate=9600,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE)
+		self.gps = adafruit_gps.GPS(self.ser, debug=False)  # Use UART/pyserial
+		self.gps.send_command(b'PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0')
+		# Set update rate to once a second (1hz) which is what you typically want.
+		self.gps.send_command(b"PMTK220,1000")
+
+	def __del__(self):
+		self.ser.close()
 		
 
 	"""
@@ -91,6 +99,54 @@ class MyNode(Node):
 		gps = self.gps_treatement()
 		
 		self.publisher_.publish(gps)
+
+		self.gps.update()
+
+		print("=" * 40)  # Print a separator line.
+		if not self.gps.has_fix:
+			# Try again if we don't have a fix yet.
+			print("Waiting for fix...")
+			return
+
+		"""print(
+			"Fix timestamp: {}/{}/{} {:02}:{:02}:{:02}".format(
+				self.gps.timestamp_utc.tm_mon,  # Grab parts of the time from the
+				self.gps.timestamp_utc.tm_mday,  # struct_time object that holds
+				self.gps.timestamp_utc.tm_year,  # the fix time.  Note you might
+				self.gps.timestamp_utc.tm_hour,  # not get all data like year, day,
+				self.gps.timestamp_utc.tm_min,  # month!
+				self.gps.timestamp_utc.tm_sec,
+			)
+		)"""
+		print("Latitude: {0:.6f} degrees".format(self.gps.latitude))
+		print("Longitude: {0:.6f} degrees".format(self.gps.longitude))
+		print(
+			"Precise Latitude: {:2.}{:2.4f} degrees".format(
+				self.gps.latitude_degrees, self.gps.latitude_minutes
+			)
+		)
+		print(
+			"Precise Longitude: {:2.}{:2.4f} degrees".format(
+				self.gps.longitude_degrees, self.gps.longitude_minutes
+			)
+		)
+		print("Fix quality: {}".format(self.gps.fix_quality))
+		# Some attributes beyond latitude, longitude and timestamp are optional
+		# and might not be present.  Check if they're None before trying to use!
+		if self.gps.satellites is not None:
+			print("# satellites: {}".format(self.gps.satellites))
+		if self.gps.altitude_m is not None:
+			print("Altitude: {} meters".format(self.gps.altitude_m))
+		if self.gps.speed_knots is not None:
+			print("Speed: {} knots".format(self.gps.speed_knots))
+		if self.gps.track_angle_deg is not None:
+			print("Track angle: {} degrees".format(self.gps.track_angle_deg))
+		if self.gps.horizontal_dilution is not None:
+			print("Horizontal dilution: {}".format(self.gps.horizontal_dilution))
+		if self.gps.height_geoid is not None:
+			print("Height geoid: {} meters".format(self.gps.height_geoid))
+
+		#print(self.ser.read(10))
 
 	
 

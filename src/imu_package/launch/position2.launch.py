@@ -50,14 +50,24 @@ def generate_launch_description():
     imu = Node(
         package='imu_package', executable='imu_main',
         )
-    
+    # Lancer l'imu
+    position_zero = Node(
+        package='imu_package', executable='position_zero',
+        )
+
     ekf_listener = Node(
         package = 'imu_package', executable = 'ekf_listener'
+    )
+
+    gps = Node(
+        package = 'imu_package', executable = 'gps_listener'
     )
 
     return LaunchDescription([
         start_robot_localization_cmd,
         imu,
         ekf_listener,
-        #navsat_transform_node
+        #position_zero,
+        gps,
+        navsat_transform_node
     ])
