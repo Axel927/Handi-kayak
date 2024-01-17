@@ -25,6 +25,7 @@ class MyNode(Node):
 		self.gps.send_command(b'PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0')
 		# Set update rate to once a second (1hz) which is what you typically want.
 		self.gps.send_command(b"PMTK220,1000")
+		self.gps_position = NavSatFix()
 
 	def __del__(self):
 		self.ser.close()
@@ -76,30 +77,31 @@ class MyNode(Node):
 	"""
 	def gps_treatement(self):
 
-		#Initialise variables
-		gps = NavSatFix()
+		self.gps.update()
 
-		gps.latitude = 0.0
-		gps.longitude = 0.0
-		gps.altitude = 0.0
-
+		if self.gps.has_fix:
+			self.gps_position.latitude = self.gps.latitude
+			self.gps_position.longitude = self.gps.longitude
+			self.gps_position.altitude = self.gps.altitude
+			
 		#Get time
 
 		time_stamp = self.get_clock().now().to_msg()
 
-		gps.header.stamp = time_stamp
-
-		return (gps)
+		self.gps_position.header.stamp = time_stamp
 		
 	"""
 	timer_callbacks takes the gps data and publishes it on the node gps_readings
 	"""
 	def timer_callbacks(self):
-		gps = NavSatFix()
-		gps = self.gps_treatement()
+		self.gps_treatement()
 		
-		self.publisher_.publish(gps)
+		print(self.gps_position)
 
+		self.publisher_.publish(self.gps_position)
+		
+
+		"""
 		self.gps.update()
 
 		print("=" * 40)  # Print a separator line.
@@ -108,7 +110,7 @@ class MyNode(Node):
 			print("Waiting for fix...")
 			return
 
-		"""print(
+		print(
 			"Fix timestamp: {}/{}/{} {:02}:{:02}:{:02}".format(
 				self.gps.timestamp_utc.tm_mon,  # Grab parts of the time from the
 				self.gps.timestamp_utc.tm_mday,  # struct_time object that holds
@@ -117,7 +119,7 @@ class MyNode(Node):
 				self.gps.timestamp_utc.tm_min,  # month!
 				self.gps.timestamp_utc.tm_sec,
 			)
-		)"""
+		)
 		print("Latitude: {0:.6f} degrees".format(self.gps.latitude))
 		print("Longitude: {0:.6f} degrees".format(self.gps.longitude))
 		print(
@@ -147,6 +149,7 @@ class MyNode(Node):
 			print("Height geoid: {} meters".format(self.gps.height_geoid))
 
 		#print(self.ser.read(10))
+		"""
 
 	
 
