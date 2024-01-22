@@ -67,7 +67,6 @@ def generate_launch_description():
         start_robot_localization_cmd,
         imu,
         ekf_listener,
-        #position_zero,
         gps,
-        navsat_transform_node
+        #navsat_transform_node
     ])

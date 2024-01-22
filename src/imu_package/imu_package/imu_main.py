@@ -7,6 +7,7 @@ from geometry_msgs.msg import Quaternion
 from icm20948 import ICM20948
 import numpy as np
 from ahrs.filters import Madgwick
+from tf_transformations import euler_from_quaternion
 
 class MyNode(Node):
 
@@ -48,9 +49,14 @@ class MyNode(Node):
 		#Get the IMU data
 		acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data() 
 
-		acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] ) #acc in g
-		gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )  #gyro in degree per second
-		mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() ) #mag in microtesla
+		#acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] ) #acc in g
+		#gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )  #gyro in degree per second
+		#mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() ) #mag in microtesla
+
+		acc_measurement  = acc_gyro_measurement[0:3] #acc in g
+		gyro_measurement = acc_gyro_measurement[3:]  #gyro in degree per second
+		mag_measurement  = self.sensor.read_magnetometer_data() #mag in microtesla
+
 
 		acc_measurement  = [ acc_measurement[0] * 9.81, acc_measurement[1] * 9.81, acc_measurement[2] * 9.81 ] #acc from g to m/(s*s)
 		gyro_measurement = [ gyro_measurement[0]*np.pi/180, gyro_measurement[1]*np.pi/180, gyro_measurement[2]*np.pi/180 ] #gyro from dps to radian/second
@@ -67,10 +73,12 @@ class MyNode(Node):
 		#Determine the quaternarion
 		self.Q = self.madgwick.updateMARG(self.Q, gyr = gyro_measurement,acc = acc_measurement,mag = mag_measurement)
 
+		
 		#Assign the value to imu
 		#self.get_logger().info(f"Received acceleration: {vec3_acc}")
 		#self.get_logger().info(f"Received gyro: {vec3_gyro}")
 		#self.get_logger().info(f"Received mag: {mag_measurement}\n")
+		#print(self.quat_2_euler(self.assign_2_quat()))
 
 		imu.linear_acceleration = vec3_acc
 		imu.linear_acceleration_covariance = [ 	5.548E-4, 0.0, 0.0,
@@ -83,9 +91,23 @@ class MyNode(Node):
 											0., 0., 4.4396E-6]
 
 		imu.orientation = self.assign_2_quat()
+		imu.orientation_covariance = [ -1., 0., 0., 
+										0., 0., 0., 
+										0., 0., 0.]
 		imu.header.stamp = time_stamp
 
 		return (imu)
+
+	def quat_2_euler(self, quat: Quaternion) -> Vector3:
+		euler = Vector3()
+
+		orientation_list = [quat.x, quat.y, quat.z, quat.w]
+
+		(roll, pitch, yaw) = euler_from_quaternion(orientation_list)
+
+		euler.x, euler.y, euler.z =roll, pitch, yaw 
+		
+		return euler
 
 	"""
 	assign_2_vect takes a numpy array and returns a Vector3
