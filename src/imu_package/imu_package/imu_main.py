@@ -16,13 +16,13 @@ class MyNode(Node):
 	"""
 	def __init__(self):
 		super().__init__('Imu_readings')
-		self.period = 0.04 													#Period between callbacks
-		self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)
-		self.timer_ = self.create_timer(self.period, self.timer_callbacks)
+		self.period = 0.04 														#Period between callbacks
+		self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)		#Create the publisher of an IMU message on the node Imu_readings
+		self.timer_ = self.create_timer(self.period, self.timer_callbacks)		#Launches the function timer_callbacks every period
 		self.get_logger().info('Node initialised')
-		self.sensor = ICM20948()												#Initialise the IMU LSM9DS1
+		self.sensor = ICM20948()												#Initialise the IMU ICM20948
 		self.madgwick = Madgwick()												#Initialise a Madgwick filter
-		self.Q = np.array([1.0, 0.0, 0.0, 0.0])
+		self.Q = np.array([1.0, 0.0, 0.0, 0.0])									#Initialise a quaternion
 
 	"""
 	ned_to_enu takes a list in the NED (North, East, Down) format and switch it to the ENU (East, North, Up) format
@@ -48,24 +48,26 @@ class MyNode(Node):
 		#Get the IMU data
 		acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data() 
 
-		#acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] ) #acc in g
-		#gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )  #gyro in degree per second
+		#acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] ) 			#acc in g
+		#gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )  			#gyro in degree per second
 		#mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() ) #mag in microtesla
 
-		acc_measurement  = acc_gyro_measurement[0:3] #acc in g
-		gyro_measurement = acc_gyro_measurement[3:]  #gyro in degree per second
+		acc_measurement  = acc_gyro_measurement[0:3] 			#acc in g
+		gyro_measurement = acc_gyro_measurement[3:]  			#gyro in degree per second
 		mag_measurement  = self.sensor.read_magnetometer_data() #mag in microtesla
 
 
-		acc_measurement  = [ acc_measurement[0] * 9.81, acc_measurement[1] * 9.81, acc_measurement[2] * 9.81 ] #acc from g to m/(s*s)
-		gyro_measurement = [ gyro_measurement[0]*np.pi/180, gyro_measurement[1]*np.pi/180, gyro_measurement[2]*np.pi/180 ] #gyro from dps to radian/second
-		mag_measurement = [ mag_measurement[0]*1E+3, mag_measurement[1]*1E+3, mag_measurement[2]*1E+3] #mag from microtesla to tesla
+		acc_measurement  = [ acc_measurement[0] * 9.81, acc_measurement[1] * 9.81, acc_measurement[2] * 9.81 ] 				#acc from g to m/(s*s)
+		gyro_measurement = [ gyro_measurement[0]*np.pi/180, gyro_measurement[1]*np.pi/180, gyro_measurement[2]*np.pi/180 ] 	#gyro from dps to radian/second
+		mag_measurement = [ mag_measurement[0]*1E+3, mag_measurement[1]*1E+3, mag_measurement[2]*1E+3] 						#mag from microtesla to nanotesla
 		
 		#Get time
 
 		time_stamp = self.get_clock().now().to_msg()
+		imu.header.stamp = time_stamp
 
-		#Assign the imu data to vect3
+		#Assign the imu data to a vect3 object
+
 		vec3_acc  = self.assign_2_vect(acc_measurement)
 		vec3_gyro = self.assign_2_vect(gyro_measurement)
 
@@ -75,12 +77,15 @@ class MyNode(Node):
 												acc_measurement[0], acc_measurement[1], acc_measurement[2], 
 												mag_measurement[0], mag_measurement[1], mag_measurement[2], 25)
 		
-		#Assign the value to imu
+		#Checks the variables
+
 		#self.get_logger().info(f"Received acceleration: {vec3_acc}")
 		#self.get_logger().info(f"Received gyro: {vec3_gyro}")
 		#self.get_logger().info(f"Received mag: {mag_measurement}\n")
 		#self.get_logger().info(f"Received quat: {self.Q}\n")
-		self.get_logger().info(f"Received euler: {self.quat_2_euler(self.assign_2_quat())}\n")
+		#self.get_logger().info(f"Received euler: {self.quat_2_euler(self.assign_2_quat())}\n")
+
+		#Assign the value to imu
 
 		imu.linear_acceleration = vec3_acc
 		imu.linear_acceleration_covariance = [ 	5.548E-4, 0.0, 0.0,
@@ -93,14 +98,21 @@ class MyNode(Node):
 											0., 0., 4.4396E-6]
 
 		imu.orientation = self.assign_2_quat()
+		
 		imu.orientation_covariance = [ -1., 0., 0., 
 										0., 0., 0., 
-										0., 0., 0.]
-		imu.header.stamp = time_stamp
+										0., 0., 0.] #As the first term of the matrix is -1 the quaternion is currently ignored
+		
 
 		return (imu)
 
+	"""
+	quat_2_euler takes a quaternion and returns a Vector3 with the euler angles
+	@param array3 a numpy array of size 3
+	@return vect3 an object of type Vector3
+	"""
 	def quat_2_euler(self, quat: Quaternion) -> Vector3:
+		
 		euler = Vector3()
 
 		orientation_list = [quat.x, quat.y, quat.z, quat.w]

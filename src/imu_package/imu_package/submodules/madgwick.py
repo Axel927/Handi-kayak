@@ -11,7 +11,13 @@ class Madgwick:
         self.q3 = 0.
         self.beta = 0.02
 
-
+    """
+	madgwick_ahrs_update takes Imu data and transforms it into a quaternion
+	@param G (gx,gy,gz) the gyroscopes data in rad/s
+    @param A (ax,ay,az) the gyroscopes data in m/s²
+    @param M (mx,my,mz) the magnetoscope data in nanotesla
+	@return Q a quaternion which gives the imus orientation
+	"""
     def madgwick_ahrs_update( self, gx, gy, gz, ax, ay, az, mx, my, mz, sample_freq):
         s0, s1, s2, s3 = 0.0, 0.0, 0.0, 0.0
         _2q0mx, _2q0my, _2q0mz, _2q1mx, _2bx, _2bz, _4bx, _4bz, _2q0, _2q1, _2q2, _2q3, _2q0q2, _2q2q3, = \

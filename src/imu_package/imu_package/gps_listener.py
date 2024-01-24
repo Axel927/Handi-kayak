@@ -16,10 +16,11 @@ class MyNode(Node):
 	"""
 	def __init__(self):
 		super().__init__('Gps_readings')
-		self.frequency = 1.0													#Period between callbacks
-		self.publisher_ = self.create_publisher(NavSatFix, 'Gps_readings', 10)
-		self.timer_ = self.create_timer(self.frequency, self.timer_callbacks)
+		self.period = 1.0														#Period between callbacks
+		self.publisher_ = self.create_publisher(NavSatFix, 'Gps_readings', 10)	#Create the publisher for the gps data on the topic Gps_readings
+		self.timer_ = self.create_timer(self.period, self.timer_callbacks)		#Call the timer_callbacks function once a period
 		self.get_logger().info('Node initialised')
+		#Creates and define the gps and its transmission
 		self.ser = serial.Serial('/dev/ttyS0',baudrate=9600,parity=serial.PARITY_NONE,stopbits=serial.STOPBITS_ONE)
 		self.gps = adafruit_gps.GPS(self.ser, debug=False)  # Use UART/pyserial
 		self.gps.send_command(b'PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0')
@@ -38,10 +39,11 @@ class MyNode(Node):
 
 		self.gps.update()
 
-		if self.gps.has_fix:
-			self.gps_position.latitude = self.gps.latitude
+		if self.gps.has_fix: 									#If the gps gets data
+			self.gps_position.latitude = self.gps.latitude		
 			self.gps_position.longitude = self.gps.longitude
-		if self.gps.altitude_m:
+
+		if self.gps.altitude_m:									#If the gps gets the altitude
 			self.gps_position.altitude = self.gps.altitude_m
 			
 		#Get time
@@ -51,13 +53,12 @@ class MyNode(Node):
 		self.gps_position.header.stamp = time_stamp
 		
 	"""
-	timer_callbacks takes the gps data and publishes it on the node gps_readings
+	timer_callbacks takes the gps data treats it and publishes it on the node gps_readings
 	"""
 	def timer_callbacks(self):
+		
 		self.gps_treatement()
 		
-		#print(self.gps_position)
-
 		self.publisher_.publish(self.gps_position)
 
 	
@@ -66,7 +67,6 @@ def main(args=None):
 	rclpy.init(args=args)
 	node = MyNode()
 	rclpy.spin(node)
-	sensor.use_I2C()
 	rclpy.shutdown()
 
 if __name__ == '__main__':

@@ -46,19 +46,17 @@ def generate_launch_description():
     }],
         )
 
-    # Lancer l'imu
+    # Launch the imu node
     imu = Node(
         package='imu_package', executable='imu_main',
         )
-    # Lancer l'imu
-    position_zero = Node(
-        package='imu_package', executable='position_zero',
-        )
-
+    
+    # Launch the ekf_listener node
     ekf_listener = Node(
         package = 'imu_package', executable = 'ekf_listener'
     )
 
+    # Launch the gps_listener node
     gps = Node(
         package = 'imu_package', executable = 'gps_listener'
     )
