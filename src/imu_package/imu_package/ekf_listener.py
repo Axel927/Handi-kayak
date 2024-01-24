@@ -20,9 +20,11 @@ class MyNode(Node):
         self.period = 0.1  # Period between callbacks
         # Create the publisher for the Float32 buzzer instructions on the topic buzzer_instruction
         self.publisher_ = self.create_publisher(Float32, 'buzzer_instruction', 10)
+
         # Subscribes to the node odometry/filtered and call the callback function
         # once a Odometry data is published on it
         self.subscribtion_ = self.create_subscription(Odometry, 'odometry/filtered', self.callback, 10)
+
         # Call the timer_callbacks function once a period
         self.timer_ = self.create_timer(self.period, self.timer_callbacks)
         self.get_logger().info('Node initialised')
@@ -38,13 +40,8 @@ class MyNode(Node):
     @staticmethod
     def quat_2_euler(quat: Quaternion) -> Vector3:
         euler = Vector3()
-
-        orientation_list = [quat.x, quat.y, quat.z, quat.w]
-
-        (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
-
-        euler.x, euler.y, euler.z = roll, pitch, yaw
-
+        # Euler angles (yaw, pitch and roll)
+        euler.x, euler.y, euler.z = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
         return euler
 
     """

@@ -20,6 +20,7 @@ class MyNode(Node):
         self.period = 0.04  # Period between callbacks
         # Create the publisher of an IMU message on the node Imu_readings
         self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)
+
         # Launches the function timer_callbacks every period
         self.timer_ = self.create_timer(self.period,  self.timer_callbacks)
         self.get_logger().info('Node initialised')
@@ -34,7 +35,7 @@ class MyNode(Node):
     """
 
     @staticmethod
-    def ned_to_enu(ned):
+    def ned_to_enu(ned) -> tuple:
         return ned[1], ned[0], -ned[2]
 
     """
@@ -65,9 +66,7 @@ class MyNode(Node):
                            mag_measurement[2] * 1E+3]  # mag from microtesla to nanotesla
 
         # Get time
-
-        time_stamp = self.get_clock().now().to_msg()
-        imu.header.stamp = time_stamp
+        imu.header.stamp = self.get_clock().now().to_msg()
 
         # Assign the imu data to a vect3 object
 
@@ -118,13 +117,8 @@ class MyNode(Node):
     @staticmethod
     def quat_2_euler(quat: Quaternion) -> Vector3:
         euler = Vector3()
-
-        orientation_list = [quat.x, quat.y, quat.z, quat.w]
-
-        roll, pitch, yaw = euler_from_quaternion(orientation_list)
-
-        euler.x, euler.y, euler.z = roll, pitch, yaw
-
+        # Euler angles (yaw, pitch and roll)
+        euler.x, euler.y, euler.z = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
         return euler
 
     """
@@ -136,10 +130,7 @@ class MyNode(Node):
     @staticmethod
     def assign_2_vect(array3: np.array) -> Vector3:
         vect3 = Vector3()
-
-        vect3.x = array3[0]
-        vect3.y = array3[1]
-        vect3.z = array3[2]
+        vect3.x, vect3.y, vect3.z = array3[0], array3[1], array3[2]
 
         return vect3
 
@@ -150,11 +141,7 @@ class MyNode(Node):
 
     def assign_2_quat(self) -> Quaternion:
         quat = Quaternion()
-
-        quat.x = self.Q[0]
-        quat.y = self.Q[1]
-        quat.z = self.Q[2]
-        quat.w = self.Q[3]
+        quat.x, quat.y, quat.z, quat.w = self.Q[0], self.Q[1], self.Q[2], self.Q[3]
 
         return quat
 

@@ -35,16 +35,16 @@ class MyNode(Node):
         self.gps_position = NavSatFix()
 
     def __del__(self):
-        self.ser.close()
+        self.ser.close()  # Close serial liaison
 
     """
-    gps_treatement gets the data from the gps, traet it and returns it in the gps format
+    gps_treatement gets the data from the gps, treat it and returns it in the gps format
     @return gps the gps message
     """
 
     def gps_treatement(self):
 
-        self.gps.update()
+        self.gps.update()  # Update GPS data
 
         if self.gps.has_fix:  # If the gps gets data
             self.gps_position.latitude = self.gps.latitude
@@ -54,9 +54,7 @@ class MyNode(Node):
             self.gps_position.altitude = self.gps.altitude_m
 
         # Get time
-        time_stamp = self.get_clock().now().to_msg()
-
-        self.gps_position.header.stamp = time_stamp
+        self.gps_position.header.stamp = self.get_clock().now().to_msg()
 
     """
     timer_callbacks takes the gps data treats it and publishes it on the node gps_readings
