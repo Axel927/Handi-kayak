@@ -9,164 +9,170 @@ import numpy as np
 from tf_transformations import euler_from_quaternion
 from .submodules.madgwick import Madgwick
 
+
 class MyNode(Node):
+    """
+    __init__ initialises the global processes and variables
+    """
 
-	"""
-	__init__ initialises the global processes and variables
-	"""
-	def __init__(self):
-		super().__init__('Imu_readings')
-		self.period = 0.04 														#Period between callbacks
-		self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)		#Create the publisher of an IMU message on the node Imu_readings
-		self.timer_ = self.create_timer(self.period, self.timer_callbacks)		#Launches the function timer_callbacks every period
-		self.get_logger().info('Node initialised')
-		self.sensor = ICM20948()												#Initialise the IMU ICM20948
-		self.madgwick = Madgwick()												#Initialise a Madgwick filter
-		self.Q = np.array([1.0, 0.0, 0.0, 0.0])									#Initialise a quaternion
+    def __init__(self):
+        super().__init__('Imu_readings')
+        self.period = 0.04  # Period between callbacks
+        # Create the publisher of an IMU message on the node Imu_readings
+        self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)
+        # Launches the function timer_callbacks every period
+        self.timer_ = self.create_timer(self.period,  self.timer_callbacks)
+        self.get_logger().info('Node initialised')
+        self.sensor = ICM20948()  # Initialise the IMU ICM20948
+        self.madgwick = Madgwick()  # Initialise a Madgwick filter
+        self.Q = np.array([1.0, 0.0, 0.0, 0.0])  # Initialise a quaternion
 
-	"""
-	ned_to_enu takes a list in the NED (North, East, Down) format and switch it to the ENU (East, North, Up) format
-	@param ned a list of coordinates in the NED format
-	@return enu a list of coordinates in the ENU format
-	"""
-	def ned_to_enu(self,ned):
-		enu = [0, 0, 0]
-		enu[0], enu[1], enu[2] = ned[1], ned[0], -ned[2]
-		return enu
+    """
+    ned_to_enu takes a list in the NED (North, East, Down) format and switch it to the ENU (East, North, Up) format
+    @param ned a list of coordinates in the NED format
+    @return enu a list of coordinates in the ENU format
+    """
 
-	"""
-	imu_treatement gets the data from the IMU, traet it and returns it in the IMU format
-	@return imu the IMU message
-	"""
-	def imu_treatement(self):
+    @staticmethod
+    def ned_to_enu(ned):
+        return ned[1], ned[0], -ned[2]
 
-		#Initialise variables
-		imu = Imu()
-		vec3_acc   = Vector3()
-		vec3_gyro  = Vector3()
-		
-		#Get the IMU data
-		acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data() 
+    """
+    imu_treatement gets the data from the IMU, traet it and returns it in the IMU format
+    @return imu the IMU message
+    """
 
-		#acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] ) 			#acc in g
-		#gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )  			#gyro in degree per second
-		#mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() ) #mag in microtesla
+    def imu_treatement(self):
+        # Initialise variables
+        imu = Imu()
 
-		acc_measurement  = acc_gyro_measurement[0:3] 			#acc in g
-		gyro_measurement = acc_gyro_measurement[3:]  			#gyro in degree per second
-		mag_measurement  = self.sensor.read_magnetometer_data() #mag in microtesla
+        # Get the IMU data
+        acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data()
 
+        # acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] ) 			#acc in g
+        # gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )  			#gyro in degree per second
+        # mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() ) #mag in microtesla
 
-		acc_measurement  = [ acc_measurement[0] * 9.81, acc_measurement[1] * 9.81, acc_measurement[2] * 9.81 ] 				#acc from g to m/(s*s)
-		gyro_measurement = [ gyro_measurement[0]*np.pi/180, gyro_measurement[1]*np.pi/180, gyro_measurement[2]*np.pi/180 ] 	#gyro from dps to radian/second
-		mag_measurement = [ mag_measurement[0]*1E+3, mag_measurement[1]*1E+3, mag_measurement[2]*1E+3] 						#mag from microtesla to nanotesla
-		
-		#Get time
+        acc_measurement = acc_gyro_measurement[0:3]  # acc in g
+        gyro_measurement = acc_gyro_measurement[3:]  # gyro in degree per second
+        mag_measurement = self.sensor.read_magnetometer_data()  # mag in microtesla
 
-		time_stamp = self.get_clock().now().to_msg()
-		imu.header.stamp = time_stamp
+        acc_measurement = [acc_measurement[0] * 9.81, acc_measurement[1] * 9.81,
+                           acc_measurement[2] * 9.81]  # acc from g to m/(s*s)
+        gyro_measurement = [gyro_measurement[0] * np.pi / 180, gyro_measurement[1] * np.pi / 180,
+                            gyro_measurement[2] * np.pi / 180]  # gyro from dps to radian/second
+        mag_measurement = [mag_measurement[0] * 1E+3, mag_measurement[1] * 1E+3,
+                           mag_measurement[2] * 1E+3]  # mag from microtesla to nanotesla
 
-		#Assign the imu data to a vect3 object
+        # Get time
 
-		vec3_acc  = self.assign_2_vect(acc_measurement)
-		vec3_gyro = self.assign_2_vect(gyro_measurement)
+        time_stamp = self.get_clock().now().to_msg()
+        imu.header.stamp = time_stamp
 
-		#Determine the quaternarion
-		
-		self.Q = self.madgwick.madgwick_ahrs_update(	gyro_measurement[0], gyro_measurement[1], gyro_measurement[2], 
-												acc_measurement[0], acc_measurement[1], acc_measurement[2], 
-												mag_measurement[0], mag_measurement[1], mag_measurement[2], 25)
-		
-		#Checks the variables
+        # Assign the imu data to a vect3 object
 
-		#self.get_logger().info(f"Received acceleration: {vec3_acc}")
-		#self.get_logger().info(f"Received gyro: {vec3_gyro}")
-		#self.get_logger().info(f"Received mag: {mag_measurement}\n")
-		#self.get_logger().info(f"Received quat: {self.Q}\n")
-		#self.get_logger().info(f"Received euler: {self.quat_2_euler(self.assign_2_quat())}\n")
+        vec3_acc = self.assign_2_vect(acc_measurement)
+        vec3_gyro = self.assign_2_vect(gyro_measurement)
 
-		#Assign the value to imu
+        # Determine the quaternarion
 
-		imu.linear_acceleration = vec3_acc
-		imu.linear_acceleration_covariance = [ 	5.548E-4, 0.0, 0.0,
-												0.0, 5.065E-4, 0.0, 
-												0.0, 0.0, 5.804E-4]
+        self.Q = self.madgwick.madgwick_ahrs_update(gyro_measurement[0], gyro_measurement[1], gyro_measurement[2],
+                                                    acc_measurement[0], acc_measurement[1], acc_measurement[2],
+                                                    mag_measurement[0], mag_measurement[1], mag_measurement[2], 25)
 
-		imu.angular_velocity = vec3_gyro
-		imu.angular_velocity_covariance = [ 4.5598E-6, 0., 0., 
-											0., 4.1822E-6, 0., 
-											0., 0., 4.4396E-6]
+        # Checks the variables
 
-		imu.orientation = self.assign_2_quat()
-		
-		imu.orientation_covariance = [ -1., 0., 0., 
-										0., 0., 0., 
-										0., 0., 0.] #As the first term of the matrix is -1 the quaternion is currently ignored
-		
+        # self.get_logger().info(f"Received acceleration: {vec3_acc}")
+        # self.get_logger().info(f"Received gyro: {vec3_gyro}")
+        # self.get_logger().info(f"Received mag: {mag_measurement}\n")
+        # self.get_logger().info(f"Received quat: {self.Q}\n")
+        # self.get_logger().info(f"Received euler: {self.quat_2_euler(self.assign_2_quat())}\n")
 
-		return (imu)
+        # Assign the value to imu
 
-	"""
-	quat_2_euler takes a quaternion and returns a Vector3 with the euler angles
-	@param array3 a numpy array of size 3
-	@return vect3 an object of type Vector3
-	"""
-	def quat_2_euler(self, quat: Quaternion) -> Vector3:
-		
-		euler = Vector3()
+        imu.linear_acceleration = vec3_acc
+        imu.linear_acceleration_covariance = [5.548E-4, 0.0, 0.0,
+                                              0.0, 5.065E-4, 0.0,
+                                              0.0, 0.0, 5.804E-4]
 
-		orientation_list = [quat.x, quat.y, quat.z, quat.w]
+        imu.angular_velocity = vec3_gyro
+        imu.angular_velocity_covariance = [4.5598E-6, 0., 0.,
+                                           0., 4.1822E-6, 0.,
+                                           0., 0., 4.4396E-6]
 
-		(roll, pitch, yaw) = euler_from_quaternion(orientation_list)
+        imu.orientation = self.assign_2_quat()
 
-		euler.x, euler.y, euler.z =roll, pitch, yaw 
-		
-		return euler
+        # As the first term of the matrix is -1 the quaternion is currently ignored
+        imu.orientation_covariance = [-1., 0., 0.,
+                                      0., 0., 0.,
+                                      0., 0., 0.]
 
-	"""
-	assign_2_vect takes a numpy array and returns a Vector3
-	@param array3 a numpy array of size 3
-	@return vect3 an object of type Vector3
-	"""
-	def assign_2_vect(self, array3: np.array) -> Vector3:
+        return imu
 
-		vect3 = Vector3()
+    """
+    quat_2_euler takes a quaternion and returns a Vector3 with the euler angles
+    @param array3 a numpy array of size 3
+    @return vect3 an object of type Vector3
+    """
 
-		vect3.x = array3[0]
-		vect3.y = array3[1]
-		vect3.z = array3[2]
+    @staticmethod
+    def quat_2_euler(quat: Quaternion) -> Vector3:
+        euler = Vector3()
 
-		return vect3
+        orientation_list = [quat.x, quat.y, quat.z, quat.w]
 
-	"""
-	assign_2_quat assign Q to a Quaternion
-	@return quat an object of type Quaternion
-	"""
-	def assign_2_quat(self) -> Quaternion:
+        roll, pitch, yaw = euler_from_quaternion(orientation_list)
 
-		quat = Quaternion()
+        euler.x, euler.y, euler.z = roll, pitch, yaw
 
-		quat.x = self.Q[0]
-		quat.y = self.Q[1]
-		quat.z = self.Q[2]
-		quat.w = self.Q[3]
-		
+        return euler
 
-		return quat
+    """
+    assign_2_vect takes a numpy array and returns a Vector3
+    @param array3 a numpy array of size 3
+    @return vect3 an object of type Vector3
+    """
 
-	"""
-	timer_callbacks takes the imu data and publishes it on the node Imu_readings
-	"""
-	def timer_callbacks(self):
+    @staticmethod
+    def assign_2_vect(array3: np.array) -> Vector3:
+        vect3 = Vector3()
 
-		self.publisher_.publish(self.imu_treatement())
+        vect3.x = array3[0]
+        vect3.y = array3[1]
+        vect3.z = array3[2]
+
+        return vect3
+
+    """
+    assign_2_quat assign Q to a Quaternion
+    @return quat an object of type Quaternion
+    """
+
+    def assign_2_quat(self) -> Quaternion:
+        quat = Quaternion()
+
+        quat.x = self.Q[0]
+        quat.y = self.Q[1]
+        quat.z = self.Q[2]
+        quat.w = self.Q[3]
+
+        return quat
+
+    """
+    timer_callbacks takes the imu data and publishes it on the node Imu_readings
+    """
+
+    def timer_callbacks(self):
+        self.publisher_.publish(self.imu_treatement())
+
 
 def main(args=None):
-	rclpy.init(args=args)
-	node = MyNode()
-	rclpy.spin(node)
-	sensor.use_I2C()
-	rclpy.shutdown()
+    rclpy.init(args=args)
+    node = MyNode()
+    rclpy.spin(node)
+    sensor.use_I2C()
+    rclpy.shutdown()
+
 
 if __name__ == '__main__':
-	main()
+    main()

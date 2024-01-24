@@ -3,6 +3,7 @@
 
 import math
 
+
 class KayakFunctions:
     def __init__(self):
         # Variable to save wether the kayak is rencentring 
@@ -18,14 +19,15 @@ class KayakFunctions:
     @param min_dist: Closest ditance targeted by the kayak
     @return Intensity of the bip between -1 and 1
     """
+
     def getOrder(self, angle: float, position: float, max_angle: float, max_dist: float, min_dist: float) -> float:
         abs_angle = abs(angle)
         signe_angle = 1 if angle > 0 else -1
-        
+
         abs_position = abs(position)
         signe_position = 1 if position > 0 else -1
 
-        if abs_position < 0.25: # If the kayal is in the center
+        if abs_position < 0.25:  # If the kayal is in the center
             five_degree_rad = 0.087266
             # If the kayak aims outside
             if (signe_angle * signe_position < 0 and abs_angle != 0) or abs_angle > max_angle:
@@ -34,30 +36,31 @@ class KayakFunctions:
             else:
                 bip = 0.
 
-        elif abs_angle != 0: # If the kayak doesn't point exactly forward
-            opposed_side = math.tan(math.pi / 2 - abs_angle) * abs_position # Calculate the length of the opposed side
+        elif abs_angle != 0:  # If the kayak doesn't point exactly forward
+            opposed_side = math.tan(math.pi / 2 - abs_angle) * abs_position  # Calculate the length of the opposed side
 
             if not self.recentring:
                 self.recentring = opposed_side > (max_dist + min_dist) / 2
                 bip = signe_position * max(-1., min(1., opposed_side / ((max_dist + min_dist) / 2) - 1))
 
-            elif signe_angle * signe_position < 0 and abs_angle: # If the kayak aims outside
+            elif signe_angle * signe_position < 0 and abs_angle:  # If the kayak aims outside
                 bip = signe_position
 
-            elif max_dist < opposed_side: # If the kayak aims too far away
+            elif max_dist < opposed_side:  # If the kayak aims too far away
                 bip = -signe_position * max(-1., min(1., opposed_side / max_dist - 1))
 
-            elif min_dist > opposed_side or not self.recentring: # If the kayak aims too closely
+            elif min_dist > opposed_side or not self.recentring:  # If the kayak aims too closely
                 bip = signe_position * max(-1., min(1., opposed_side / ((max_dist + min_dist) / 2) - 1))
                 self.recentring = False
 
-            else: 
+            else:
                 bip = 0.
 
         else:
             bip = 0.
-        
+
         return bip
+
 
 if __name__ == '__main__':
     kayak = KayakFunctions()
