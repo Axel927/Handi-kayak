@@ -6,8 +6,8 @@ from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Quaternion
 from icm20948 import ICM20948
 import numpy as np
-from ahrs.filters import Madgwick
 from tf_transformations import euler_from_quaternion
+from .submodules.madgwick import Madgwick
 
 class MyNode(Node):
 
@@ -16,13 +16,12 @@ class MyNode(Node):
 	"""
 	def __init__(self):
 		super().__init__('Imu_readings')
-		self.frequency = 0.1 													#Period between callbacks
+		self.period = 0.04 													#Period between callbacks
 		self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)
-		self.timer_ = self.create_timer(self.frequency, self.timer_callbacks)
+		self.timer_ = self.create_timer(self.period, self.timer_callbacks)
 		self.get_logger().info('Node initialised')
 		self.sensor = ICM20948()												#Initialise the IMU LSM9DS1
 		self.madgwick = Madgwick()												#Initialise a Madgwick filter
-		self.madgwick.dt = self.frequency										#Define the madgwick filters frequency
 		self.Q = np.array([1.0, 0.0, 0.0, 0.0])
 
 	"""
@@ -45,7 +44,7 @@ class MyNode(Node):
 		imu = Imu()
 		vec3_acc   = Vector3()
 		vec3_gyro  = Vector3()
-
+		
 		#Get the IMU data
 		acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data() 
 
@@ -60,7 +59,7 @@ class MyNode(Node):
 
 		acc_measurement  = [ acc_measurement[0] * 9.81, acc_measurement[1] * 9.81, acc_measurement[2] * 9.81 ] #acc from g to m/(s*s)
 		gyro_measurement = [ gyro_measurement[0]*np.pi/180, gyro_measurement[1]*np.pi/180, gyro_measurement[2]*np.pi/180 ] #gyro from dps to radian/second
-		mag_measurement = [ mag_measurement[0]*1E-6, mag_measurement[1]*1E-6, mag_measurement[2]*1E-6] #mag from microtesla to tesla
+		mag_measurement = [ mag_measurement[0]*1E+3, mag_measurement[1]*1E+3, mag_measurement[2]*1E+3] #mag from microtesla to tesla
 		
 		#Get time
 
@@ -71,14 +70,17 @@ class MyNode(Node):
 		vec3_gyro = self.assign_2_vect(gyro_measurement)
 
 		#Determine the quaternarion
-		self.Q = self.madgwick.updateMARG(self.Q, gyr = gyro_measurement,acc = acc_measurement,mag = mag_measurement)
-
+		
+		self.Q = self.madgwick.madgwick_ahrs_update(	gyro_measurement[0], gyro_measurement[1], gyro_measurement[2], 
+												acc_measurement[0], acc_measurement[1], acc_measurement[2], 
+												mag_measurement[0], mag_measurement[1], mag_measurement[2], 25)
 		
 		#Assign the value to imu
 		#self.get_logger().info(f"Received acceleration: {vec3_acc}")
 		#self.get_logger().info(f"Received gyro: {vec3_gyro}")
 		#self.get_logger().info(f"Received mag: {mag_measurement}\n")
-		#print(self.quat_2_euler(self.assign_2_quat()))
+		#self.get_logger().info(f"Received quat: {self.Q}\n")
+		self.get_logger().info(f"Received euler: {self.quat_2_euler(self.assign_2_quat())}\n")
 
 		imu.linear_acceleration = vec3_acc
 		imu.linear_acceleration_covariance = [ 	5.548E-4, 0.0, 0.0,

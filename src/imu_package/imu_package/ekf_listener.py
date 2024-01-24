@@ -44,7 +44,7 @@ class MyNode(Node):
 		functions = KayakFunctions()
 		buzzer_command = Float32()
 		buzzer_command.data = functions.getOrder(self.euler.z, self.position.y,  5., 20., 10.)
-		self.get_logger().info(f"Received angle: roll {self.euler.x},pitch {self.euler.y},yaw {self.euler.z}")
+		#self.get_logger().info(f"Received angle: roll {self.euler.x},pitch {self.euler.y},yaw {self.euler.z}")
 
 		self.publisher_.publish(buzzer_command)
 
