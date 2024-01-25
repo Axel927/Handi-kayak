@@ -61,7 +61,7 @@ class MyNode(Node):
     """
 
     def callback(self, msg):
-        self.position = msg.pose.pose.position.y
+        self.position.y = msg.pose.pose.position.y
         # self.get_logger().info(f"Received quaternion: {quaternion}")
         self.euler = self.quat_2_euler(msg.pose.pose.orientation)
 

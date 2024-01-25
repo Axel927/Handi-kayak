@@ -77,7 +77,7 @@ class MyNode(Node):
 
         self.Q = self.madgwick.madgwick_ahrs_update(gyro_measurement[0], gyro_measurement[1], gyro_measurement[2],
                                                     acc_measurement[0], acc_measurement[1], acc_measurement[2],
-                                                    mag_measurement[0], mag_measurement[1], mag_measurement[2], 25)
+                                                    mag_measurement[0], mag_measurement[1], mag_measurement[2], 1 / self.period)
 
         # Checks the variables
 

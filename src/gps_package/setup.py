@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'buzzer_package'
+package_name = 'gps_package'
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'buzzer_main = buzzer_package.buzzer_main:main'
+            'gps_listener = gps_package.gps_listener:main'
         ],
     },
 )

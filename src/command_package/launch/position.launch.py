@@ -12,10 +12,10 @@ from launch_ros.actions import Node
 def generate_launch_description():
 
     # Nom du package
-    package_name = 'imu_package'
+    #package_name = 'imu_package'
 
-    pkg_path = os.path.join(get_package_share_directory('imu_package'))
-    robot_localization_file_path = os.path.join(pkg_path, 'config/ekf.yaml')
+    command_path = os.path.join(get_package_share_directory('command_package'))
+    robot_localization_file_path = os.path.join(command_path, 'config/ekf.yaml')
 
     # Start robot localization using an Extended Kalman filter
     start_robot_localization_cmd = Node(
@@ -53,18 +53,24 @@ def generate_launch_description():
     
     # Launch the ekf_listener node
     ekf_listener = Node(
-        package = 'imu_package', executable = 'ekf_listener'
+        package = 'command_package', executable = 'ekf_listener'
     )
 
     # Launch the gps_listener node
     gps = Node(
-        package = 'imu_package', executable = 'gps_listener'
+        package = 'gps_package', executable = 'gps_listener'
+    )
+
+    # Launch the gps_listener node
+    buzzer = Node(
+        package = 'buzzer_package', executable = 'buzzer_main'
     )
 
     return LaunchDescription([
-        start_robot_localization_cmd,
         imu,
+        gps, 
+        navsat_transform_node,
+        start_robot_localization_cmd,
         ekf_listener,
-        gps,
-        #navsat_transform_node
+        buzzer,
     ])

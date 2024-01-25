@@ -53,7 +53,7 @@ class BuzzerNode(Node):
         Callback function to make the buzzer buzz
         :return: None
         """
-        self.get_logger().info(f"Buzzer frequency: {self.buzzer_frequencies[self.current_buzzer]} Hz")
+        #self.get_logger().info(f"Buzzer frequency: {self.buzzer_frequencies[self.current_buzzer]} Hz")
         self.buzz(self.buzzer_frequencies[self.current_buzzer])
 
     def instruction_callback(self, value):
@@ -63,7 +63,7 @@ class BuzzerNode(Node):
         :param value: Float32: value of the message on the topic, must be between -1 and 1
         :return: None
         """
-        self.get_logger().info(f"Received instruction: {value.data}")
+        #self.get_logger().info(f"Received instruction: {value.data}")
 
         if not self.timer.is_canceled():
             self.timer.cancel()  # Stop the timer to change its period

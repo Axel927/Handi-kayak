@@ -123,5 +123,5 @@ class Madgwick:
 
         return [self.q0, self.q1, self.q2, self.q3]
 
-    if __name__ == '__main__':
-        madgwick_ahrs_update(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100)
+if __name__ == '__main__':
+    madgwick_ahrs_update(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100)
