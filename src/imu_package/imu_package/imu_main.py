@@ -20,13 +20,22 @@ class MyNode(Node):
         self.period = 0.04  # Period between callbacks
         # Create the publisher of an IMU message on the node Imu_readings
         self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)
-
+        
         # Launches the function timer_callbacks every period
         self.timer_ = self.create_timer(self.period,  self.timer_callbacks)
         self.get_logger().info('Node initialised')
         self.sensor = ICM20948()  # Initialise the IMU ICM20948
         self.madgwick = Madgwick()  # Initialise a Madgwick filter
         self.Q = np.array([1.0, 0.0, 0.0, 0.0])  # Initialise a quaternion
+        # Get the IMU data
+        self.init_acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data()
+
+        self.init_acc_measurement = self.init_acc_gyro_measurement[0:3]		#acc in g
+        self.init_acc_measurement = [self.init_acc_measurement[0],self.init_acc_measurement[1],self.init_acc_measurement[2] + 1 ]
+        self.init_gyro_measurement = self.init_acc_gyro_measurement[3:]   			#gyro in degree per second
+        self.init_mag_measurement  = self.sensor.read_magnetometer_data()  #mag in microtesla
+
+        
 
     """
     ned_to_enu takes a list in the NED (North, East, Down) format and switch it to the ENU (East, North, Up) format
@@ -50,9 +59,9 @@ class MyNode(Node):
         # Get the IMU data
         acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data()
 
-        # acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] ) 			#acc in g
-        # gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )  			#gyro in degree per second
-        # mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() ) #mag in microtesla
+        #acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] ) 			#acc in g
+        #gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )  			#gyro in degree per second
+        #mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() ) #mag in microtesla
 
         acc_measurement = acc_gyro_measurement[0:3]  # acc in g
         gyro_measurement = acc_gyro_measurement[3:]  # gyro in degree per second
@@ -75,36 +84,58 @@ class MyNode(Node):
 
         # Determine the quaternarion
 
+        #self.Q = self.madgwick.madgwick_ahrs_update(gyro_measurement[0], gyro_measurement[1], gyro_measurement[2],
+        #                                            acc_measurement[0] - self.init_acc_measurement[0], acc_measurement[1] - self.init_acc_measurement[1], acc_measurement[2] - self.init_acc_measurement[2],
+        #                                            mag_measurement[0], mag_measurement[1], mag_measurement[2], 1 / self.period)
+
         self.Q = self.madgwick.madgwick_ahrs_update(gyro_measurement[0], gyro_measurement[1], gyro_measurement[2],
                                                     acc_measurement[0], acc_measurement[1], acc_measurement[2],
                                                     mag_measurement[0], mag_measurement[1], mag_measurement[2], 1 / self.period)
+
+
+        self.quaternion_Hamilton_2_JPL()
+        file = open("orientation", "a")
+        file.writelines([str(self.Q[0]),",", str(self.Q[1]),",", str(self.Q[2]),",", str(self.Q[3]),"\n"])
+        file.close()
+        #acc_measurement  = self.ned_to_enu( acc_measurement ) 			#acc in g
+        #gyro_measurement = self.ned_to_enu( gyro_measurement)  			#gyro in degree per second
+        #mag_measurement  = self.ned_to_enu( mag_measurement ) #mag in microtesla
+
 
         # Checks the variables
 
         # self.get_logger().info(f"Received acceleration: {vec3_acc}")
         # self.get_logger().info(f"Received gyro: {vec3_gyro}")
         # self.get_logger().info(f"Received mag: {mag_measurement}\n")
-        # self.get_logger().info(f"Received quat: {self.Q}\n")
-        # self.get_logger().info(f"Received euler: {self.quat_2_euler(self.assign_2_quat())}\n")
+        # self.get_logger().info(f"Received quat imu: {self.Q}\n")
+        #self.get_logger().info(f"Received euler: {self.quat_2_euler(self.assign_2_quat())}\n")
 
         # Assign the value to imu
 
         imu.linear_acceleration = vec3_acc
+        imu.linear_acceleration_covariance = [10., 0.0, 0.0,
+                                              0.0, 10., 0.0,
+                                              0.0, 0.0, 10.]
+        """
         imu.linear_acceleration_covariance = [5.548E-4, 0.0, 0.0,
                                               0.0, 5.065E-4, 0.0,
                                               0.0, 0.0, 5.804E-4]
-
+        """
         imu.angular_velocity = vec3_gyro
+        imu.angular_velocity_covariance = [10., 0., 0.,
+                                           0., 10., 0.,
+                                           0., 0., 10.]
+        """
         imu.angular_velocity_covariance = [4.5598E-6, 0., 0.,
                                            0., 4.1822E-6, 0.,
                                            0., 0., 4.4396E-6]
-
+        """
         imu.orientation = self.assign_2_quat()
 
         # As the first term of the matrix is -1 the quaternion is currently ignored
-        imu.orientation_covariance = [-1., 0., 0.,
-                                      0., 0., 0.,
-                                      0., 0., 0.]
+        imu.orientation_covariance = [0.0001, 0., 0.,
+                                      0., 0.0001, 0.,
+                                      0., 0., 0.0001]
 
         return imu
 
@@ -145,13 +176,16 @@ class MyNode(Node):
 
         return quat
 
+    def quaternion_Hamilton_2_JPL(self):
+        self.Q[0], self.Q[1], self.Q[2], self.Q[3] = self.Q[1], self.Q[2], self.Q[3], self.Q[0]
+
     """
     timer_callbacks takes the imu data and publishes it on the node Imu_readings
     """
 
     def timer_callbacks(self):
         self.publisher_.publish(self.imu_treatement())
-
+        
 
 def main(args=None):
     rclpy.init(args=args)

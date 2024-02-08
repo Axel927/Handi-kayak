@@ -68,8 +68,8 @@ def generate_launch_description():
 
     return LaunchDescription([
         imu,
-        gps, 
-        navsat_transform_node,
+        #gps, 
+        #navsat_transform_node,
         start_robot_localization_cmd,
         ekf_listener,
         buzzer,

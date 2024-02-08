@@ -17,14 +17,14 @@ class MyNode(Node):
 
     def __init__(self):
         super().__init__('ekf_listener')
-        self.period = 0.1  # Period between callbacks
+        self.period = 0.5  # Period between callbacks
         # Create the publisher for the Float32 buzzer instructions on the topic buzzer_instruction
         self.publisher_ = self.create_publisher(Float32, 'buzzer_instruction', 10)
 
         # Subscribes to the node odometry/filtered and call the callback function
         # once a Odometry data is published on it
         self.subscribtion_ = self.create_subscription(Odometry, 'odometry/filtered', self.callback, 10)
-
+        
         # Call the timer_callbacks function once a period
         self.timer_ = self.create_timer(self.period, self.timer_callbacks)
         self.get_logger().info('Node initialised')
@@ -51,8 +51,9 @@ class MyNode(Node):
     def timer_callbacks(self):
         functions = KayakFunctions()
         buzzer_command = Float32()
-        buzzer_command.data = functions.getOrder(self.euler.z, self.position.y, 5., 20., 10.)
-        # self.get_logger().info(f"Received angle: roll {self.euler.x},pitch {self.euler.y},yaw {self.euler.z}")
+        buzzer_command.data = functions.getOrder(self.euler.z, self.position.y, 0.4, 20., 10.)
+        #self.get_logger().info(f"Calculated command : {buzzer_command.data}")
+        #self.get_logger().info(f"Received angle: roll {self.euler.x},pitch {self.euler.y},yaw {self.euler.z}")
 
         self.publisher_.publish(buzzer_command)
 
@@ -62,8 +63,10 @@ class MyNode(Node):
 
     def callback(self, msg):
         self.position.y = msg.pose.pose.position.y
-        # self.get_logger().info(f"Received quaternion: {quaternion}")
         self.euler = self.quat_2_euler(msg.pose.pose.orientation)
+
+        # self.get_logger().info(f"Received quaternion: {msg.pose.pose.orientation}")
+        # self.get_logger().info(f"Received angle: roll {self.euler.x},pitch {self.euler.y},yaw {self.euler.z}")
 
 
 def main(args=None):

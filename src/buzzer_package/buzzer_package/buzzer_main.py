@@ -81,6 +81,7 @@ class BuzzerNode(Node):
         # Set the period of the timer
         self.timer = self.create_timer((self.min_period - self.max_period) * data + self.max_period,
                                        self.timer_callback)
+        #self.get_logger().info(f"Received instruction: {value.data}")
 
 
 def main(args=None):

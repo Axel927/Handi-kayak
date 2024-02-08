@@ -14,9 +14,9 @@ class KayakFunctions:
     -1 corresponds to a need to rotate right and 1 to rotate left
     @param angle: The angle of the kayak in rad
     @param position: Horizontal position of the kayak in meter
-    @param max_angle: Maximum rotation authorised for the kayak
-    @param max_dist: Maximum distance forward targeted by the kayak
-    @param min_dist: Closest ditance targeted by the kayak
+    @param max_angle: Maximum rotation authorised for the kayak in rad
+    @param max_dist: Maximum distance forward targeted by the kayak in meters
+    @param min_dist: Closest ditance targeted by the kayak in meters
     @return Intensity of the bip between -1 and 1
     """
 
@@ -28,7 +28,8 @@ class KayakFunctions:
         signe_position = 1 if position > 0 else -1
 
         if abs_position < 0.25:  # If the kayal is in the center
-            five_degree_rad = 0.087266
+            #five_degree_rad = 0.087266
+            five_degree_rad = 0.4
             # If the kayak aims outside
             if (signe_angle * signe_position < 0 and abs_angle != 0) or abs_angle > max_angle:
                 bip = signe_angle * min(1., abs_angle / five_degree_rad)
