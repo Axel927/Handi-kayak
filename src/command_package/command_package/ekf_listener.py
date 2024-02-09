@@ -65,8 +65,8 @@ class MyNode(Node):
         self.position.y = msg.pose.pose.position.y
         self.euler = self.quat_2_euler(msg.pose.pose.orientation)
 
-        # self.get_logger().info(f"Received quaternion: {msg.pose.pose.orientation}")
-        # self.get_logger().info(f"Received angle: roll {self.euler.x},pitch {self.euler.y},yaw {self.euler.z}")
+        #self.get_logger().info(f"Received quaternion: {msg.pose.pose.orientation}")
+        #self.get_logger().info(f"Received angle: roll {self.euler.x},pitch {self.euler.y},yaw {self.euler.z}")
 
 
 def main(args=None):

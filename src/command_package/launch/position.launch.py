@@ -47,9 +47,14 @@ def generate_launch_description():
         )
 
     # Launch the imu node
-    imu = Node(
+    imu_treatement = Node(
         package='imu_package', executable='imu_main',
         )
+
+    # Launch the imu node
+    imu_data = Node(
+        package='imu_package', executable='imu_listener',
+        )  
     
     # Launch the ekf_listener node
     ekf_listener = Node(
@@ -67,10 +72,13 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        imu,
+        imu_data,
+        imu_treatement,
         #gps, 
         #navsat_transform_node,
         start_robot_localization_cmd,
         ekf_listener,
-        buzzer,
+        #buzzer,
+        
+
     ])

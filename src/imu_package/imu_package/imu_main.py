@@ -4,11 +4,10 @@ from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Quaternion
-from icm20948 import ICM20948
 import numpy as np
 from tf_transformations import euler_from_quaternion
 from .submodules.madgwick import Madgwick
-
+from std_msgs.msg import Float32MultiArray
 
 class MyNode(Node):
     """
@@ -17,24 +16,25 @@ class MyNode(Node):
 
     def __init__(self):
         super().__init__('Imu_readings')
-        self.period = 0.04  # Period between callbacks
+        self.period = 1/35  # Period between callbacks
         # Create the publisher of an IMU message on the node Imu_readings
         self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)
+
+        # Create the subscriber to the components of the imu data 
+        self.subscribtion_gyro = self.create_subscription(Float32MultiArray, 'imu/gyroscope', self.callback_gyro, 10)
+        self.subscribtion_acc = self.create_subscription(Float32MultiArray, 'imu/accelerometer', self.callback_acc, 10)
+        self.subscribtion_mag = self.create_subscription(Float32MultiArray, 'imu/magnetometer', self.callback_mag, 10)
         
         # Launches the function timer_callbacks every period
         self.timer_ = self.create_timer(self.period,  self.timer_callbacks)
-        self.get_logger().info('Node initialised')
-        self.sensor = ICM20948()  # Initialise the IMU ICM20948
+
+        #Define global elements
         self.madgwick = Madgwick()  # Initialise a Madgwick filter
         self.Q = np.array([1.0, 0.0, 0.0, 0.0])  # Initialise a quaternion
-        # Get the IMU data
-        self.init_acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data()
-
-        self.init_acc_measurement = self.init_acc_gyro_measurement[0:3]		#acc in g
-        self.init_acc_measurement = [self.init_acc_measurement[0],self.init_acc_measurement[1],self.init_acc_measurement[2] + 1 ]
-        self.init_gyro_measurement = self.init_acc_gyro_measurement[3:]   			#gyro in degree per second
-        self.init_mag_measurement  = self.sensor.read_magnetometer_data()  #mag in microtesla
-
+        self.acc_measurement = [0.,0.,1.]
+        self.mag_measurement = [-5.,7.,2.]
+        self.gyro_measurement = [-1.,1.,0.]
+        self.get_logger().info('Node initialised')
         
 
     """
@@ -56,51 +56,25 @@ class MyNode(Node):
         # Initialise variables
         imu = Imu()
 
-        # Get the IMU data
-        acc_gyro_measurement = self.sensor.read_accelerometer_gyro_data()
-
-        #acc_measurement  = self.ned_to_enu( acc_gyro_measurement[0:3] ) 			#acc in g
-        #gyro_measurement = self.ned_to_enu( acc_gyro_measurement[3:] )  			#gyro in degree per second
-        #mag_measurement  = self.ned_to_enu( self.sensor.read_magnetometer_data() ) #mag in microtesla
-
-        acc_measurement = acc_gyro_measurement[0:3]  # acc in g
-        gyro_measurement = acc_gyro_measurement[3:]  # gyro in degree per second
-        mag_measurement = self.sensor.read_magnetometer_data()  # mag in microtesla
-
-        acc_measurement = [acc_measurement[0] * 9.81, acc_measurement[1] * 9.81,
-                           acc_measurement[2] * 9.81]  # acc from g to m/(s*s)
-        gyro_measurement = [gyro_measurement[0] * np.pi / 180, gyro_measurement[1] * np.pi / 180,
-                            gyro_measurement[2] * np.pi / 180]  # gyro from dps to radian/second
-        mag_measurement = [mag_measurement[0] * 1E+3, mag_measurement[1] * 1E+3,
-                           mag_measurement[2] * 1E+3]  # mag from microtesla to nanotesla
-
         # Get time
         imu.header.stamp = self.get_clock().now().to_msg()
 
         # Assign the imu data to a vect3 object
 
-        vec3_acc = self.assign_2_vect(acc_measurement)
-        vec3_gyro = self.assign_2_vect(gyro_measurement)
+        vec3_acc = self.assign_2_vect( self.ned_to_enu( self.acc_measurement ))
+        vec3_gyro = self.assign_2_vect(self.ned_to_enu( self.gyro_measurement ))
 
         # Determine the quaternarion
 
-        #self.Q = self.madgwick.madgwick_ahrs_update(gyro_measurement[0], gyro_measurement[1], gyro_measurement[2],
-        #                                            acc_measurement[0] - self.init_acc_measurement[0], acc_measurement[1] - self.init_acc_measurement[1], acc_measurement[2] - self.init_acc_measurement[2],
-        #                                            mag_measurement[0], mag_measurement[1], mag_measurement[2], 1 / self.period)
-
-        self.Q = self.madgwick.madgwick_ahrs_update(gyro_measurement[0], gyro_measurement[1], gyro_measurement[2],
-                                                    acc_measurement[0], acc_measurement[1], acc_measurement[2],
-                                                    mag_measurement[0], mag_measurement[1], mag_measurement[2], 1 / self.period)
+        self.Q = self.madgwick.madgwick_ahrs_update(self.gyro_measurement[0], self.gyro_measurement[1], self.gyro_measurement[2],
+                                                    self.acc_measurement[0], self.acc_measurement[1], self.acc_measurement[2],
+                                                    self.mag_measurement[0], self.mag_measurement[1], self.mag_measurement[2], 1 / self.period)
 
 
-        self.quaternion_Hamilton_2_JPL()
-        file = open("orientation", "a")
-        file.writelines([str(self.Q[0]),",", str(self.Q[1]),",", str(self.Q[2]),",", str(self.Q[3]),"\n"])
-        file.close()
-        #acc_measurement  = self.ned_to_enu( acc_measurement ) 			#acc in g
-        #gyro_measurement = self.ned_to_enu( gyro_measurement)  			#gyro in degree per second
-        #mag_measurement  = self.ned_to_enu( mag_measurement ) #mag in microtesla
-
+        
+        #file = open("orientation", "a")
+        #file.writelines([str(self.Q[0]),",", str(self.Q[1]),",", str(self.Q[2]),",", str(self.Q[3]),"\n"])
+        #file.close()
 
         # Checks the variables
 
@@ -108,28 +82,24 @@ class MyNode(Node):
         # self.get_logger().info(f"Received gyro: {vec3_gyro}")
         # self.get_logger().info(f"Received mag: {mag_measurement}\n")
         # self.get_logger().info(f"Received quat imu: {self.Q}\n")
-        #self.get_logger().info(f"Received euler: {self.quat_2_euler(self.assign_2_quat())}\n")
+        # self.get_logger().info(f"Received euler: {self.quat_2_euler(self.assign_2_quat())}\n")
 
         # Assign the value to imu
 
+        self.quaternion_Hamilton_2_JPL()
+
         imu.linear_acceleration = vec3_acc
-        imu.linear_acceleration_covariance = [10., 0.0, 0.0,
-                                              0.0, 10., 0.0,
-                                              0.0, 0.0, 10.]
-        """
+        
         imu.linear_acceleration_covariance = [5.548E-4, 0.0, 0.0,
                                               0.0, 5.065E-4, 0.0,
                                               0.0, 0.0, 5.804E-4]
-        """
+        
         imu.angular_velocity = vec3_gyro
-        imu.angular_velocity_covariance = [10., 0., 0.,
-                                           0., 10., 0.,
-                                           0., 0., 10.]
-        """
+        
         imu.angular_velocity_covariance = [4.5598E-6, 0., 0.,
                                            0., 4.1822E-6, 0.,
                                            0., 0., 4.4396E-6]
-        """
+        
         imu.orientation = self.assign_2_quat()
 
         # As the first term of the matrix is -1 the quaternion is currently ignored
@@ -185,7 +155,26 @@ class MyNode(Node):
 
     def timer_callbacks(self):
         self.publisher_.publish(self.imu_treatement())
+
+    def callback_acc(self, msg):
+        self.acc_measurement = self.ned_to_enu(msg.data)
+
+        self.acc_measurement = [self.acc_measurement[0] * 9.81, self.acc_measurement[1] * 9.81,
+                           self.acc_measurement[2] * 9.81]  # acc from g to m/(s*s)
+
+    def callback_gyro(self, msg):
+        self.gyro_measurement = self.ned_to_enu(msg.data)
+
+        self.gyro_measurement = [self.gyro_measurement[0] * np.pi / 180, self.gyro_measurement[1] * np.pi / 180,
+                            self.gyro_measurement[2] * np.pi / 180]  # gyro from dps to radian/second
         
+
+    def callback_mag(self, msg):
+        self.mag_measurement = self.ned_to_enu(msg.data)
+
+        self.mag_measurement = [self.mag_measurement[0] * 1E+3, self.mag_measurement[1] * 1E+3,
+                           self.mag_measurement[2] * 1E+3]  # mag from microtesla to nanotesla
+
 
 def main(args=None):
     rclpy.init(args=args)
