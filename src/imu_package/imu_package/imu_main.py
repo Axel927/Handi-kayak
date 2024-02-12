@@ -10,12 +10,12 @@ from .submodules.madgwick import Madgwick
 from std_msgs.msg import Float32MultiArray
 
 class MyNode(Node):
+    
     """
     __init__ initialises the global processes and variables
     """
-
     def __init__(self):
-        super().__init__('Imu_readings')
+        super().__init__('imu_treatement')
         self.period = 1/35  # Period between callbacks
         # Create the publisher of an IMU message on the node Imu_readings
         self.publisher_ = self.create_publisher(Imu, 'Imu_readings', 10)
@@ -42,7 +42,6 @@ class MyNode(Node):
     @param ned a list of coordinates in the NED format
     @return enu a list of coordinates in the ENU format
     """
-
     @staticmethod
     def ned_to_enu(ned) -> tuple:
         return ned[1], ned[0], -ned[2]
@@ -51,7 +50,6 @@ class MyNode(Node):
     imu_treatement gets the data from the IMU, traet it and returns it in the IMU format
     @return imu the IMU message
     """
-
     def imu_treatement(self):
         # Initialise variables
         imu = Imu()
@@ -77,6 +75,7 @@ class MyNode(Node):
         #file.close()
 
         # Checks the variables
+        self.quaternion_Hamilton_2_JPL()
 
         # self.get_logger().info(f"Received acceleration: {vec3_acc}")
         # self.get_logger().info(f"Received gyro: {vec3_gyro}")
@@ -86,7 +85,7 @@ class MyNode(Node):
 
         # Assign the value to imu
 
-        self.quaternion_Hamilton_2_JPL()
+        
 
         imu.linear_acceleration = vec3_acc
         
@@ -114,7 +113,6 @@ class MyNode(Node):
     @param array3 a numpy array of size 3
     @return vect3 an object of type Vector3
     """
-
     @staticmethod
     def quat_2_euler(quat: Quaternion) -> Vector3:
         euler = Vector3()
@@ -127,7 +125,6 @@ class MyNode(Node):
     @param array3 a numpy array of size 3
     @return vect3 an object of type Vector3
     """
-
     @staticmethod
     def assign_2_vect(array3: np.array) -> Vector3:
         vect3 = Vector3()
@@ -139,36 +136,45 @@ class MyNode(Node):
     assign_2_quat assign Q to a Quaternion
     @return quat an object of type Quaternion
     """
-
     def assign_2_quat(self) -> Quaternion:
         quat = Quaternion()
         quat.x, quat.y, quat.z, quat.w = self.Q[0], self.Q[1], self.Q[2], self.Q[3]
 
         return quat
 
+    """
+    quaternion_Hamilton_2_JPL transforms a quater,io, from the Hamilton convention (w,x,y,z) tp JPL (x,y,z,w)
+    """
     def quaternion_Hamilton_2_JPL(self):
         self.Q[0], self.Q[1], self.Q[2], self.Q[3] = self.Q[1], self.Q[2], self.Q[3], self.Q[0]
 
     """
     timer_callbacks takes the imu data and publishes it on the node Imu_readings
     """
-
     def timer_callbacks(self):
         self.publisher_.publish(self.imu_treatement())
 
+    
+    """
+    callback_acc get the message sent on the imu/accelerometer topic and change it to S.I format
+    """
     def callback_acc(self, msg):
         self.acc_measurement = self.ned_to_enu(msg.data)
 
         self.acc_measurement = [self.acc_measurement[0] * 9.81, self.acc_measurement[1] * 9.81,
                            self.acc_measurement[2] * 9.81]  # acc from g to m/(s*s)
-
+    """
+    callback_gyro get the message sent on the imu/gyroscope topic and change it to S.I format
+    """
     def callback_gyro(self, msg):
         self.gyro_measurement = self.ned_to_enu(msg.data)
 
         self.gyro_measurement = [self.gyro_measurement[0] * np.pi / 180, self.gyro_measurement[1] * np.pi / 180,
                             self.gyro_measurement[2] * np.pi / 180]  # gyro from dps to radian/second
         
-
+    """
+    callback_mag get the message sent on the imu/magnetometer topic and change it to S.I format
+    """
     def callback_mag(self, msg):
         self.mag_measurement = self.ned_to_enu(msg.data)
 
